@@ -1,4 +1,4 @@
-// src/TCP0465Core.cpp v1
+// src/TCP0465Core.cpp v2
 #include "TCP0465Core.h"
 
 TCP0465Core::TCP0465Core()
@@ -24,7 +24,7 @@ bool TCP0465Core::readOxygenPercent(float& percentVol) {
 }
 
 TCP0465Core::ErrorCode TCP0465Core::lastError() const {
-  return ERROR_MODE_SWITCH_FAILED;
+  return lastError_;
 }
 
 const char* TCP0465Core::errorString() const {
@@ -38,4 +38,4 @@ uint8_t TCP0465Core::address() const {
 void TCP0465Core::setError(ErrorCode error) {
   lastError_ = error;
 }
-// src/TCP0465Core.cpp v1
+// src/TCP0465Core.cpp v2

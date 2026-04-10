@@ -1,4 +1,4 @@
-# Makefile v3
+# Makefile v5
 SHELL := /bin/bash
 
 ARDUINO_CLI ?= arduino-cli
@@ -12,6 +12,8 @@ HOST_CXXFLAGS ?= -std=c++17 -Wall -Wextra -Werror -pedantic -Isrc
 EXAMPLES := $(wildcard examples/*/*.ino)
 HOST_TEST_FILES := $(wildcard tests/host/*.cpp)
 HOST_TEST_SUPPORT := src/TCP0465Protocol.cpp src/TCP0465Core.cpp
+LIBRARY_ROOT := $(CURDIR)
+CLI_SKETCH_ROOT := build/cli-sketches
 
 .PHONY: help setup host-test test compile compile-all ci clean
 
@@ -45,33 +47,41 @@ test: host-test
 
 compile:
 	@set -euo pipefail; \
-	mkdir -p build; \
+	mkdir -p "$(CLI_SKETCH_ROOT)"; \
 	for sketch in $(EXAMPLES); do \
-	  sketch_tag="$$(basename "$$sketch" .ino)"; \
+	  sketch_name="$$(basename "$$sketch" .ino)"; \
+	  temp_sketch_dir="$(CLI_SKETCH_ROOT)/$$sketch_name"; \
 	  board_tag="$$(echo "$(DEFAULT_FQBN)" | tr ':/' '__')"; \
-	  build_dir="build/$$sketch_tag-$$board_tag"; \
+	  build_dir="build/$$sketch_name-$$board_tag"; \
+	  rm -rf "$$temp_sketch_dir"; \
+	  mkdir -p "$$temp_sketch_dir"; \
+	  cp "$$sketch" "$$temp_sketch_dir/$$sketch_name.ino"; \
 	  $(ARDUINO_CLI) compile \
 	    --fqbn "$(DEFAULT_FQBN)" \
-	    --libraries . \
+	    --library "$(LIBRARY_ROOT)" \
 	    --warnings all \
 	    --build-path "$$build_dir" \
-	    "$$sketch" >/dev/null; \
+	    "$$temp_sketch_dir" >/dev/null; \
 	done
 
 compile-all:
 	@set -euo pipefail; \
-	mkdir -p build; \
+	mkdir -p "$(CLI_SKETCH_ROOT)"; \
 	for fqbn in $(CI_FQBNS); do \
 	  for sketch in $(EXAMPLES); do \
-	    sketch_tag="$$(basename "$$sketch" .ino)"; \
+	    sketch_name="$$(basename "$$sketch" .ino)"; \
+	    temp_sketch_dir="$(CLI_SKETCH_ROOT)/$$sketch_name"; \
 	    board_tag="$$(echo "$$fqbn" | tr ':/' '__')"; \
-	    build_dir="build/$$sketch_tag-$$board_tag"; \
+	    build_dir="build/$$sketch_name-$$board_tag"; \
+	    rm -rf "$$temp_sketch_dir"; \
+	    mkdir -p "$$temp_sketch_dir"; \
+	    cp "$$sketch" "$$temp_sketch_dir/$$sketch_name.ino"; \
 	    $(ARDUINO_CLI) compile \
 	      --fqbn "$$fqbn" \
-	      --libraries . \
+	      --library "$(LIBRARY_ROOT)" \
 	      --warnings all \
 	      --build-path "$$build_dir" \
-	      "$$sketch" >/dev/null; \
+	      "$$temp_sketch_dir" >/dev/null; \
 	  done; \
 	done
 
@@ -79,4 +89,4 @@ ci: host-test setup compile-all
 
 clean:
 	@rm -rf build
-# Makefile v3
+# Makefile v5
