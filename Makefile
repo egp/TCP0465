@@ -1,5 +1,4 @@
-# Makefile V2
-
+# Makefile v3
 SHELL := /bin/bash
 
 ARDUINO_CLI ?= arduino-cli
@@ -11,15 +10,15 @@ CXX ?= c++
 HOST_CXXFLAGS ?= -std=c++17 -Wall -Wextra -Werror -pedantic -Isrc
 
 EXAMPLES := $(wildcard examples/*/*.ino)
-HOST_TEST_SOURCES := $(wildcard tests/host/*.cpp)
-HOST_TEST_BINARY := build/host/test_tcp0465_host
+HOST_TEST_FILES := $(wildcard tests/host/*.cpp)
+HOST_TEST_SUPPORT := src/TCP0465Protocol.cpp src/TCP0465Core.cpp
 
 .PHONY: help setup host-test test compile compile-all ci clean
 
 help:
 	@echo "Targets:"
 	@echo "  make setup        - install/update Arduino CLI index and AVR core"
-	@echo "  make host-test    - build and run host-side protocol parser tests"
+	@echo "  make host-test    - build and run host-side tests"
 	@echo "  make test         - alias for host-test"
 	@echo "  make compile      - compile all examples for DEFAULT_FQBN ($(DEFAULT_FQBN))"
 	@echo "  make compile-all  - compile all examples for all CI_FQBNS"
@@ -32,17 +31,15 @@ setup:
 	$(ARDUINO_CLI) core update-index >/dev/null; \
 	$(ARDUINO_CLI) core install $(ARDUINO_CORE) >/dev/null
 
-$(HOST_TEST_BINARY): $(HOST_TEST_SOURCES) src/TCP0465Protocol.cpp src/TCP0465Protocol.h
+host-test:
 	@set -euo pipefail; \
-	mkdir -p "$(dir $@)"; \
-	$(CXX) $(HOST_CXXFLAGS) \
-	  $(HOST_TEST_SOURCES) \
-	  src/TCP0465Protocol.cpp \
-	  -o "$@"
-
-host-test: $(HOST_TEST_BINARY)
-	@set -euo pipefail; \
-	"$<"
+	mkdir -p build/host; \
+	for test_src in $(HOST_TEST_FILES); do \
+	  test_name="$$(basename "$$test_src" .cpp)"; \
+	  test_bin="build/host/$$test_name"; \
+	  $(CXX) $(HOST_CXXFLAGS) "$$test_src" $(HOST_TEST_SUPPORT) -o "$$test_bin"; \
+	  "$$test_bin"; \
+	done
 
 test: host-test
 
@@ -82,4 +79,4 @@ ci: host-test setup compile-all
 
 clean:
 	@rm -rf build
-# Makefile V2
+# Makefile v3

@@ -1,11 +1,10 @@
-// src/TCP0465.h v2
-#ifndef TCP0465_H
-#define TCP0465_H
+// src/TCP0465Core.h v1
+#ifndef TCP0465_CORE_H
+#define TCP0465_CORE_H
 
-#include <Arduino.h>
-#include <Wire.h>
+#include <stdint.h>
 
-class TCP0465 {
+class TCP0465Core {
 public:
   static const uint8_t DEFAULT_ADDRESS = 0x74;
   static const uint8_t EXPECTED_GAS_TYPE_OXYGEN = 0x05;
@@ -25,9 +24,9 @@ public:
     ERROR_MODE_SWITCH_REJECTED
   };
 
-  TCP0465();
+  TCP0465Core();
 
-  bool begin(TwoWire& wire = Wire, uint8_t address = DEFAULT_ADDRESS);
+  bool begin(uint8_t address = DEFAULT_ADDRESS);
   bool readOxygenPercent(float& percentVol);
 
   ErrorCode lastError() const;
@@ -35,22 +34,12 @@ public:
   uint8_t address() const;
 
 private:
-  static const uint8_t kFrameSize = 9;
-  static const uint8_t kCommandSetMode = 0x78;
-  static const uint8_t kCommandReadGas = 0x86;
-  static const uint8_t kModePassive = 0x04;
-
-  bool setPassiveMode();
-  bool writeCommand(uint8_t command, uint8_t data3 = 0x00);
-  bool requestFrame(uint8_t* frame, size_t frameLength);
-
   void setError(ErrorCode error);
 
-  TwoWire* wire_;
   uint8_t address_;
   ErrorCode lastError_;
   bool initialized_;
 };
 
 #endif
-// src/TCP0465.h v2
+// src/TCP0465Core.h v1

@@ -1,10 +1,10 @@
-// tests/host/test_WB_tcp0465_address.cpp v2
+// tests/host/test_WB_tcp0465core_address.cpp v1
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wkeyword-macro"
 #endif
 #define private public
-#include "TCP0465.h"
+#include "TCP0465Core.h"
 #undef private
 #if defined(__clang__)
 #pragma clang diagnostic pop
@@ -23,8 +23,8 @@ void require(bool condition, const char* message) {
 }
 
 void test_WB_constructorSeedsAddressMemberToDefaultAddress() {
-  TCP0465 sensor;
-  require(sensor.address_ == TCP0465::DEFAULT_ADDRESS,
+  TCP0465Core core;
+  require(core.address_ == TCP0465Core::DEFAULT_ADDRESS,
           "constructor should seed address_ to default address");
 }
 
@@ -32,7 +32,7 @@ void test_WB_constructorSeedsAddressMemberToDefaultAddress() {
 
 int main() {
   test_WB_constructorSeedsAddressMemberToDefaultAddress();
-  std::cout << "PASS: test_WB_tcp0465_address" << std::endl;
+  std::cout << "PASS: test_WB_tcp0465core_address" << std::endl;
   return 0;
 }
-// tests/host/test_WB_tcp0465_address.cpp v2
+// tests/host/test_WB_tcp0465core_address.cpp v1
