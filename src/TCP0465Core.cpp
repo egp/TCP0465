@@ -1,4 +1,4 @@
-// src/TCP0465Core.cpp v2
+// src/TCP0465Core.cpp v3
 #include "TCP0465Core.h"
 
 TCP0465Core::TCP0465Core()
@@ -28,7 +28,34 @@ TCP0465Core::ErrorCode TCP0465Core::lastError() const {
 }
 
 const char* TCP0465Core::errorString() const {
-  return "stub";
+  switch (lastError_) {
+    case ERROR_NONE:
+      return "no error";
+    case ERROR_NOT_INITIALIZED:
+      return "not initialized";
+    case ERROR_I2C_WRITE:
+      return "I2C write failed";
+    case ERROR_I2C_READ:
+      return "I2C read failed";
+    case ERROR_SHORT_RESPONSE:
+      return "short response";
+    case ERROR_INVALID_START_BYTE:
+      return "invalid start byte";
+    case ERROR_UNEXPECTED_COMMAND:
+      return "unexpected command byte";
+    case ERROR_CHECKSUM_MISMATCH:
+      return "checksum mismatch";
+    case ERROR_UNEXPECTED_GAS_TYPE:
+      return "unexpected gas type";
+    case ERROR_INVALID_DECIMALS:
+      return "invalid decimal field";
+    case ERROR_MODE_SWITCH_FAILED:
+      return "mode switch command failed";
+    case ERROR_MODE_SWITCH_REJECTED:
+      return "mode switch rejected";
+    default:
+      return "unknown error";
+  }
 }
 
 uint8_t TCP0465Core::address() const {
@@ -38,4 +65,4 @@ uint8_t TCP0465Core::address() const {
 void TCP0465Core::setError(ErrorCode error) {
   lastError_ = error;
 }
-// src/TCP0465Core.cpp v2
+// src/TCP0465Core.cpp v3
