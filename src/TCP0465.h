@@ -1,5 +1,6 @@
-// src/TCP0465.h V1
+src/TCP0465.h
 
+// src/TCP0465.h v1
 #ifndef TCP0465_H
 #define TCP0465_H
 
@@ -36,21 +37,14 @@ public:
   uint8_t address() const;
 
 private:
-  static const uint8_t kProtocolAddress = 0x01;
-  static const uint8_t kStartByte = 0xFF;
   static const uint8_t kFrameSize = 9;
-
   static const uint8_t kCommandSetMode = 0x78;
   static const uint8_t kCommandReadGas = 0x86;
-
   static const uint8_t kModePassive = 0x04;
-  static const uint8_t kModeSwitchAccepted = 0x01;
 
   bool setPassiveMode();
   bool writeCommand(uint8_t command, uint8_t data3 = 0x00);
-  bool readFrame(uint8_t expectedCommand, uint8_t* frame, size_t frameLength);
-
-  static uint8_t computeChecksum(const uint8_t* bytes, size_t lengthWithoutChecksum);
+  bool requestFrame(uint8_t* frame, size_t frameLength);
 
   void setError(ErrorCode error);
 
@@ -61,4 +55,4 @@ private:
 };
 
 #endif
-// src/TCP0465.h V1
+// src/TCP0465.h v1
