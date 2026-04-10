@@ -1,13 +1,15 @@
-// src/TCP0465Core.h v1
+// src/TCP0465Core.h v2
 #ifndef TCP0465_CORE_H
 #define TCP0465_CORE_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 class TCP0465Core {
 public:
   static const uint8_t DEFAULT_ADDRESS = 0x74;
   static const uint8_t EXPECTED_GAS_TYPE_OXYGEN = 0x05;
+  static const size_t RESPONSE_FRAME_SIZE = 9;
 
   enum ErrorCode : uint8_t {
     ERROR_NONE = 0,
@@ -39,7 +41,11 @@ private:
   uint8_t address_;
   ErrorCode lastError_;
   bool initialized_;
+
+  uint8_t pendingResponseFrame_[RESPONSE_FRAME_SIZE];
+  size_t pendingResponseLength_;
+  bool pendingResponseValid_;
 };
 
 #endif
-// src/TCP0465Core.h v1
+// src/TCP0465Core.h v2
