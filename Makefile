@@ -1,4 +1,4 @@
-# Makefile v6
+# Makefile v7
 SHELL := /bin/bash
 
 ARDUINO_CLI ?= arduino-cli
@@ -16,8 +16,7 @@ HOST_CXXFLAGS ?= -std=c++17 -Wall -Wextra -Werror -pedantic -Isrc
 HOST_TEST_FILES := $(wildcard tests/host/*.cpp)
 HOST_TEST_SUPPORT := src/TCP0465Protocol.cpp src/TCP0465Core.cpp
 
-EXAMPLE_INO_FILES := $(sort $(wildcard examples/*.ino) $(wildcard examples/*/*.ino))
-CLI_SKETCH_ROOT := build/cli-sketches
+EXAMPLE_DIRS := $(sort $(dir $(wildcard examples/*/*.ino)))
 
 .PHONY: help setup host-test test compile compile-all clean
 
@@ -51,22 +50,12 @@ test: host-test
 
 compile:
 	@set -euo pipefail; \
-	mkdir -p "$(CLI_SKETCH_ROOT)"; \
 	for fqbn in $(CI_FQBNS); do \
-	  board_tag="$$(echo "$$fqbn" | tr ':/' '__')"; \
-	  for ino in $(EXAMPLE_INO_FILES); do \
-	    sketch_name="$$(basename "$$ino" .ino)"; \
-	    temp_sketch_dir="$(CLI_SKETCH_ROOT)/$$sketch_name"; \
-	    build_dir="build/$$sketch_name-$$board_tag"; \
-	    rm -rf "$$temp_sketch_dir"; \
-	    mkdir -p "$$temp_sketch_dir"; \
-	    cp "$$ino" "$$temp_sketch_dir/$$sketch_name.ino"; \
+	  for sketch_dir in $(EXAMPLE_DIRS); do \
 	    $(ARDUINO_CLI) compile \
 	      --fqbn "$$fqbn" \
-	      --libraries . \
-	      --warnings all \
-	      --build-path "$$build_dir" \
-	      "$$temp_sketch_dir" >/dev/null; \
+	      --library . \
+	      "$$sketch_dir" >/dev/null; \
 	  done; \
 	done
 
@@ -74,4 +63,4 @@ compile-all: compile
 
 clean:
 	@rm -rf build
-# Makefile v6
+# Makefile v7
