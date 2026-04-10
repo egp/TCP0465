@@ -1,4 +1,4 @@
-// src/TCP0465.cpp v4
+// src/TCP0465.cpp v5
 #include "TCP0465.h"
 #include "TCP0465Protocol.h"
 
@@ -199,4 +199,4 @@ bool TCP0465::requestFrame(uint8_t* frame, size_t frameLength) {
 void TCP0465::setError(ErrorCode error) {
   lastError_ = error;
 }
-// src/TCP0465.cpp v4
+// src/TCP0465.cpp v5

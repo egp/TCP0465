@@ -1,7 +1,7 @@
 // tests/host/test_WB_tcp0465_protocol_parser.cpp V1
 
 #include <cmath>
-#include <cstdlib>
+#include <stdlib.h>
 #include <iostream>
 
 #include "TCP0465Protocol.h"
@@ -11,7 +11,7 @@ namespace {
 void require(bool condition, const char* message) {
   if (!condition) {
     std::cerr << "FAIL: " << message << std::endl;
-    std::exit(1);
+    exit(1);
   }
 }
 

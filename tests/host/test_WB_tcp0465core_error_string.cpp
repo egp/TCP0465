@@ -10,7 +10,7 @@
 #pragma clang diagnostic pop
 #endif
 
-#include <cstdlib>
+#include <stdlib.h>
 #include <cstring>
 #include <iostream>
 
@@ -19,7 +19,7 @@ namespace {
 void require(bool condition, const char* message) {
   if (!condition) {
     std::cerr << "FAIL: " << message << std::endl;
-    std::exit(1);
+    exit(1);
   }
 }
 
