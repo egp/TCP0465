@@ -1,9 +1,9 @@
-// src/TCP0465.h v2
+// src/TCP0465.h v3
 #ifndef TCP0465_H
 #define TCP0465_H
 
 #include <Arduino.h>
-#include <Wire.h>
+#include <BitBang_I2C.h>
 
 class TCP0465 {
 public:
@@ -27,7 +27,7 @@ public:
 
   TCP0465();
 
-  bool begin(TwoWire& wire = Wire, uint8_t address = DEFAULT_ADDRESS);
+  bool begin(BBI2C& i2c, uint8_t address = DEFAULT_ADDRESS);
   bool readOxygenPercent(float& percentVol);
 
   ErrorCode lastError() const;
@@ -43,14 +43,13 @@ private:
   bool setPassiveMode();
   bool writeCommand(uint8_t command, uint8_t data3 = 0x00);
   bool requestFrame(uint8_t* frame, size_t frameLength);
-
   void setError(ErrorCode error);
 
-  TwoWire* wire_;
+  BBI2C* i2c_;
   uint8_t address_;
   ErrorCode lastError_;
   bool initialized_;
 };
 
 #endif
-// src/TCP0465.h v2
+// src/TCP0465.h v3

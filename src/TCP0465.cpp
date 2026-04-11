@@ -1,9 +1,9 @@
-// src/TCP0465.cpp v5
+// src/TCP0465.cpp v6
 #include "TCP0465.h"
+
 #include "TCP0465Protocol.h"
 
 namespace {
-
 TCP0465::ErrorCode mapParseStatus(tcp0465::ParseStatus status) {
   switch (status) {
     case tcp0465::PARSE_OK:
@@ -26,22 +26,19 @@ TCP0465::ErrorCode mapParseStatus(tcp0465::ParseStatus status) {
       return TCP0465::ERROR_I2C_READ;
   }
 }
-
 }  // namespace
 
 TCP0465::TCP0465()
-    : wire_(nullptr),
+    : i2c_(nullptr),
       address_(DEFAULT_ADDRESS),
       lastError_(ERROR_NOT_INITIALIZED),
       initialized_(false) {}
 
-bool TCP0465::begin(TwoWire& wire, uint8_t address) {
-  wire_ = &wire;
+bool TCP0465::begin(BBI2C& i2c, uint8_t address) {
+  i2c_ = &i2c;
   address_ = address;
   initialized_ = false;
   setError(ERROR_NONE);
-
-  wire_->begin();
 
   if (!setPassiveMode()) {
     return false;
@@ -53,7 +50,7 @@ bool TCP0465::begin(TwoWire& wire, uint8_t address) {
 }
 
 bool TCP0465::readOxygenPercent(float& percentVol) {
-  if (!initialized_ || wire_ == nullptr) {
+  if (!initialized_ || i2c_ == nullptr) {
     percentVol = -1.0f;
     setError(ERROR_NOT_INITIALIZED);
     return false;
@@ -148,7 +145,7 @@ bool TCP0465::setPassiveMode() {
 }
 
 bool TCP0465::writeCommand(uint8_t command, uint8_t data3) {
-  if (wire_ == nullptr) {
+  if (i2c_ == nullptr) {
     setError(ERROR_NOT_INITIALIZED);
     return false;
   }
@@ -156,11 +153,8 @@ bool TCP0465::writeCommand(uint8_t command, uint8_t data3) {
   uint8_t frame[kFrameSize] = {0};
   tcp0465::buildCommandFrame(command, data3, frame);
 
-  wire_->beginTransmission(address_);
-  const size_t written = wire_->write(frame, sizeof(frame));
-  const uint8_t txStatus = wire_->endTransmission();
-
-  if (written != sizeof(frame) || txStatus != 0) {
+  const int written = I2CWrite(i2c_, address_, frame, sizeof(frame));
+  if (written != static_cast<int>(sizeof(frame))) {
     setError(ERROR_I2C_WRITE);
     return false;
   }
@@ -169,26 +163,17 @@ bool TCP0465::writeCommand(uint8_t command, uint8_t data3) {
 }
 
 bool TCP0465::requestFrame(uint8_t* frame, size_t frameLength) {
-  if (wire_ == nullptr) {
+  if (i2c_ == nullptr) {
     setError(ERROR_NOT_INITIALIZED);
     return false;
   }
 
-  const uint8_t requested = static_cast<uint8_t>(frameLength);
-  const uint8_t received =
-      wire_->requestFrom(static_cast<int>(address_), static_cast<int>(requested));
-
-  if (received == 0) {
+  const int received = I2CRead(i2c_, address_, frame, static_cast<int>(frameLength));
+  if (received <= 0) {
     setError(ERROR_I2C_READ);
     return false;
   }
-
-  size_t index = 0;
-  while (wire_->available() && index < frameLength) {
-    frame[index++] = static_cast<uint8_t>(wire_->read());
-  }
-
-  if (index < frameLength) {
+  if (received < static_cast<int>(frameLength)) {
     setError(ERROR_SHORT_RESPONSE);
     return false;
   }
@@ -199,4 +184,4 @@ bool TCP0465::requestFrame(uint8_t* frame, size_t frameLength) {
 void TCP0465::setError(ErrorCode error) {
   lastError_ = error;
 }
-// src/TCP0465.cpp v5
+// src/TCP0465.cpp v6
