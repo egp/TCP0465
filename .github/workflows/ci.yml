@@ -1,4 +1,3 @@
-
 name: ci
 
 on:
@@ -10,7 +9,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout TCP0465
         uses: actions/checkout@v4
 
       - name: Arduino Lint
@@ -21,7 +20,7 @@ jobs:
   host-tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout TCP0465
         uses: actions/checkout@v4
 
       - name: Build and run host tests
@@ -40,19 +39,32 @@ jobs:
           - arduino:avr:mega
 
     steps:
-      - name: Checkout
+      - name: Checkout TCP0465
         uses: actions/checkout@v4
+        with:
+          path: TCP0465
+
+      - name: Checkout TCP1819
+        uses: actions/checkout@v4
+        with:
+          repository: egp/TCP1819
+          path: TCP1819
 
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v2
 
       - name: Install cores
+        working-directory: TCP0465
         run: |
+          set -euo pipefail
           arduino-cli config init --overwrite
           arduino-cli core update-index
           arduino-cli core install arduino:avr
 
       - name: Compile examples
+        working-directory: TCP0465
         run: |
           set -euo pipefail
-          make compile-all CI_FQBNS="${{ matrix.fqbn }}"
+          make compile-all \
+            CI_FQBNS="${{ matrix.fqbn }}" \
+            TCP1819_DIR="$GITHUB_WORKSPACE/TCP1819"
