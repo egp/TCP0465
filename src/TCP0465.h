@@ -3,7 +3,7 @@
 #define TCP0465_H
 
 #include <Arduino.h>
-#include <BitBang_I2C.h>
+#include "TCP1819.h"
 
 class TCP0465 {
 public:

@@ -44,7 +44,7 @@ The expected oxygen range is 0 to 25 `%Vol`.
 
 The intended Arduino-facing API is:
 
-- `bool begin(TwoWire& wire = Wire, uint8_t address = DEFAULT_ADDRESS);`
+- `bool begin(BBI2C& i2c, uint8_t address = DEFAULT_ADDRESS);`
 - `bool readOxygenPercent(float& percentVol);`
 - `ErrorCode lastError() const;`
 - `const char* errorString() const;`

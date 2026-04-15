@@ -1,18 +1,24 @@
-// examples/HardwareSmoke/HardwareSmoke.ino V1
-
+// examples/HardwareSmoke/HardwareSmoke.ino V2
+#include <TCP1819.h>
 #include <TCP0465.h>
 
+static constexpr uint8_t OXYGEN_SDA_PIN = 5;
+static constexpr uint8_t OXYGEN_SCL_PIN = 6;
+static constexpr uint32_t OXYGEN_I2C_HZ = 100000;
+
+BBI2C oxygenBus;
 TCP0465 oxygen;
+
 bool autoRead = false;
 unsigned long nextReadAtMs = 0;
 
 void printHelp() {
   Serial.println();
   Serial.println("HardwareSmoke commands:");
-  Serial.println("  ?  help");
-  Serial.println("  r  single oxygen read");
-  Serial.println("  a  toggle auto-read once per second");
-  Serial.println("  b  re-run begin()");
+  Serial.println(" ? help");
+  Serial.println(" r single oxygen read");
+  Serial.println(" a toggle auto-read once per second");
+  Serial.println(" b re-run begin()");
   Serial.println();
 }
 
@@ -28,11 +34,21 @@ void performRead() {
   }
 }
 
+void setupOxygenBus() {
+  memset(&oxygenBus, 0, sizeof(oxygenBus));
+  oxygenBus.bWire = 0;              // software/bit-bang I2C
+  oxygenBus.iSDA = OXYGEN_SDA_PIN;
+  oxygenBus.iSCL = OXYGEN_SCL_PIN;
+  I2CInit(&oxygenBus, OXYGEN_I2C_HZ);
+}
+
 void setup() {
   Serial.begin(115200);
   while (!Serial && millis() < 5000) {
     delay(10);
   }
+
+  setupOxygenBus();
 
   Serial.println();
   Serial.println("TCP0465 HardwareSmoke");
@@ -40,7 +56,7 @@ void setup() {
   Serial.println("Important: long-unused modules are recommended to preheat for >24 hours.");
   Serial.println();
 
-  if (!oxygen.begin()) {
+  if (!oxygen.begin(oxygenBus)) {
     Serial.print("begin() failed: ");
     Serial.println(oxygen.errorString());
   } else {
@@ -74,7 +90,7 @@ void loop() {
 
       case 'b':
       case 'B':
-        if (!oxygen.begin()) {
+        if (!oxygen.begin(oxygenBus)) {
           Serial.print("begin() failed: ");
           Serial.println(oxygen.errorString());
         } else {
@@ -101,4 +117,5 @@ void loop() {
     performRead();
   }
 }
-// examples/HardwareSmoke/HardwareSmoke.ino V1
+
+// examples/HardwareSmoke/HardwareSmoke.ino V2
