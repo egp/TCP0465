@@ -2,85 +2,190 @@
 
 TCP0465 is an Arduino library for the DFRobot SEN0465 factory-calibrated oxygen sensor.
 
-This project is intentionally narrow in scope:
+This library is intentionally narrow in scope:
 
 - sensor: SEN0465 only
 - bus: I2C only
 - mode: passive/query mode only
 - measurement: oxygen concentration only
-- one sensor on the bus
-- default address: `0x74` unless overridden
+- one sensor per `TCP0465` object
+- default device address: `0x74`
 
-The implementation is intended to be a clean-room implementation based on the published protocol documentation, not a wrapper around the vendor library.
+The implementation is a clean-room implementation of the documented protocol. It is not a wrapper around the vendor library.
 
-## Current status
+## Companion dependency
 
-Current development status:
+TCP0465 currently uses the `TCP1819` companion library for the Arduino-facing I2C transport types and helpers.
 
-- host-side protocol parsing tests are green
-- host-side pure-core API tests are green
-- the host-testable core API has been implemented and tested
-- Arduino-library discovery / integration is still being diagnosed
-- end-to-end hardware validation is still pending
+The public API uses:
 
-In other words:
+- `BBI2C`
+- `I2CInit(...)`
+- `I2CWrite(...)`
+- `I2CRead(...)`
 
-- the parsing and core behavior are reasonably far along
-- the Arduino-facing wrapper and normal Arduino library import path are not yet fully signed off
+Install both libraries before building the examples.
 
-## Sensor notes
+## Features
 
-Important warm-up / preheat guidance from the SEN0465 documentation:
+- initialize the sensor in passive/query mode
+- read oxygen concentration as `%Vol`
+- compact embedded-friendly error model
+- basic read example
+- hardware smoke-test example
+
+## Public API
+
+class TCP0465 {
+public:
+  static const uint8_t DEFAULT_ADDRESS = 0x74;
+  static const uint8_t EXPECTED_GAS_TYPE_OXYGEN = 0x05;
+
+  enum ErrorCode : uint8_t {
+    ERROR_NONE = 0,
+    ERROR_NOT_INITIALIZED,
+    ERROR_I2C_WRITE,
+    ERROR_I2C_READ,
+    ERROR_SHORT_RESPONSE,
+    ERROR_INVALID_START_BYTE,
+    ERROR_UNEXPECTED_COMMAND,
+    ERROR_CHECKSUM_MISMATCH,
+    ERROR_UNEXPECTED_GAS_TYPE,
+    ERROR_INVALID_DECIMALS,
+    ERROR_MODE_SWITCH_FAILED,
+    ERROR_MODE_SWITCH_REJECTED
+  };
+
+  TCP0465();
+  bool begin(BBI2C& i2c, uint8_t address = DEFAULT_ADDRESS);
+  bool readOxygenPercent(float& percentVol);
+  ErrorCode lastError() const;
+  const char* errorString() const;
+  uint8_t address() const;
+};
+
+## Installation
+
+Install these libraries side by side in your Arduino libraries directory:
+
+- `TCP0465`
+- `TCP1819`
+
+Example layout:
+
+- `~/Documents/Arduino/libraries/TCP0465`
+- `~/Documents/Arduino/libraries/TCP1819`
+
+## Wiring
+
+Use the SEN0465 in I2C mode.
+
+Typical connections:
+
+- VCC -> 3.3V or 5V
+- GND -> GND
+- SDA -> chosen controller GPIO for the TCP1819 I2C bus
+- SCL -> chosen controller GPIO for the TCP1819 I2C bus
+
+The current examples configure the bus pins in the sketch, so they are not limited to the board’s default hardware SDA/SCL pins.
+
+## Sensor warm-up notes
+
+Important guidance from the SEN0465 documentation:
 
 - first power-up needs more than 5 minutes of warm-up
 - long-unused modules are recommended to preheat for more than 24 hours
 
 Do not trust measurements until the sensor has had adequate warm-up time.
 
-The SEN0465 reports oxygen concentration over a calibrated digital interface.
-The expected oxygen range is 0 to 25 `%Vol`.
+## Minimal example
 
-## Intended public API
+#include <TCP1819.h>
+#include <TCP0465.h>
 
-The intended Arduino-facing API is:
+namespace {
+constexpr uint8_t kOxygenSdaPin = 10;
+constexpr uint8_t kOxygenSclPin = 11;
+constexpr uint32_t kOxygenI2cHz = 100000;
+}
 
-- `bool begin(BBI2C& i2c, uint8_t address = DEFAULT_ADDRESS);`
-- `bool readOxygenPercent(float& percentVol);`
-- `ErrorCode lastError() const;`
-- `const char* errorString() const;`
-- `uint8_t address() const;`
+BBI2C oxygenBus;
+TCP0465 oxygen;
 
-### `begin(...)`
+static void setupOxygenBus() {
+  memset(&oxygenBus, 0, sizeof(oxygenBus));
+  oxygenBus.bWire = 0;
+  oxygenBus.iSDA = kOxygenSdaPin;
+  oxygenBus.iSCL = kOxygenSclPin;
+  I2CInit(&oxygenBus, kOxygenI2cHz);
+}
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial && millis() < 5000) {
+    delay(10);
+  }
+
+  setupOxygenBus();
+
+  if (!oxygen.begin(oxygenBus)) {
+    Serial.print("begin() failed: ");
+    Serial.println(oxygen.errorString());
+    while (true) {
+      delay(1000);
+    }
+  }
+
+  Serial.println("Sensor initialized.");
+}
+
+void loop() {
+  float percentVol = 0.0f;
+
+  if (oxygen.readOxygenPercent(percentVol)) {
+    Serial.print("O2 concentration: ");
+    Serial.print(percentVol, 1);
+    Serial.println(" %Vol");
+  } else {
+    Serial.print("readOxygenPercent() failed: ");
+    Serial.println(oxygen.errorString());
+  }
+
+  delay(1000);
+}
+
+## API notes
+
+### begin(...)
 
 Purpose:
 
-- bind the library to an I2C bus
-- remember the configured device address
-- prepare the sensor for passive/query reads
+- bind the library to an initialized `BBI2C` bus
+- remember the configured sensor address
+- switch the sensor into passive/query mode
 
 Nominal usage:
 
-- call once from `setup()`
-- use the default address unless your module has been configured differently
+- configure and initialize the `BBI2C` bus first
+- call `begin(...)` once from `setup()`
+- use the default address unless your module has been reconfigured
 
-### `readOxygenPercent(...)`
+### readOxygenPercent(...)
 
 Purpose:
 
-- perform one oxygen read in passive/query mode
-- return the oxygen concentration in `%Vol`
+- perform one passive/query read
+- decode and return oxygen concentration in `%Vol`
 
 Nominal usage:
 
-- call after a successful `begin()`
+- call after a successful `begin(...)`
 - on success, `percentVol` receives the decoded oxygen concentration
 - on failure, inspect `lastError()` or `errorString()`
 
 ### Error reporting
 
-The library exposes a small embedded-friendly error model.
-
-Current error enum:
+The library exposes this error model:
 
 - `ERROR_NONE`
 - `ERROR_NOT_INITIALIZED`
@@ -95,24 +200,28 @@ Current error enum:
 - `ERROR_MODE_SWITCH_FAILED`
 - `ERROR_MODE_SWITCH_REJECTED`
 
-The exact behavior of each code is still subject to refinement while the Arduino-facing transport layer is being finished.
+Use `errorString()` for a human-readable summary.
 
-## Wiring
+## Examples
 
-Use I2C mode on the sensor board.
+### BasicRead
 
-Typical connections:
+Simple once-per-second oxygen reading example.
 
-- VCC -> 3.3V or 5V
-- GND -> GND
-- SDA -> controller SDA
-- SCL -> controller SCL
+### HardwareSmoke
 
-The module must be configured for I2C mode.
+Interactive serial smoke test for bring-up and manual debugging.
 
-## Current restrictions
+Commands:
 
-This library is not a full-featured multi-gas framework.
+- `?` help
+- `r` single oxygen read
+- `a` toggle auto-read once per second
+- `b` re-run `begin()`
+
+## Restrictions
+
+This is not a full-featured multi-gas framework.
 
 Current restrictions:
 
@@ -127,92 +236,10 @@ Current restrictions:
 - no analog-output support
 - no multi-sensor discovery
 - no dynamic address management
-- no calibration workflow beyond decoding the factory-calibrated digital output
-
-Current project restriction:
-
-- host-side tests are the source of truth right now
-- normal Arduino IDE / Arduino CLI import and compile flow is not yet fully validated
-
-## What has been tested so far
-
-The host-side test suite currently covers:
-
-- protocol checksum logic
-- validation of passive oxygen response frames
-- rejection of malformed or invalid frames
-- pure-core API behavior for:
-  - `address()`
-  - `lastError()`
-  - `errorString()`
-  - `begin()`
-  - `readOxygenPercent()`
-
-This means the low-level protocol and pure-core behavior are being developed with TDD even though hardware access is currently limited.
-
-## Example sketch shape
-
-The intended sketch pattern is:
-
-1. construct `TCP0465`
-2. call `begin()`
-3. repeatedly call `readOxygenPercent(percentVol)`
-4. print `%Vol` on success
-5. print `errorString()` on failure
-
-A minimal sketch looks like this conceptually:
-
-    #include <TCP0465.h>
-
-    TCP0465 oxygen;
-
-    void setup() {
-      Serial.begin(115200);
-
-      if (!oxygen.begin()) {
-        Serial.print("begin() failed: ");
-        Serial.println(oxygen.errorString());
-        while (true) {
-          delay(1000);
-        }
-      }
-    }
-
-    void loop() {
-      float percentVol = 0.0f;
-
-      if (oxygen.readOxygenPercent(percentVol)) {
-        Serial.print("O2: ");
-        Serial.print(percentVol, 1);
-        Serial.println(" %Vol");
-      } else {
-        Serial.print("read failed: ");
-        Serial.println(oxygen.errorString());
-      }
-
-      delay(1000);
-    }
 
 ## Development
 
-Requirements:
-
-- Arduino CLI
-- a supported Arduino core installed locally
-- a host C++ compiler such as `c++` or `g++`
-
-Common commands:
-
-- `make host-test`
-- `make test`
-- `make compile`
-- `make compile-all`
-- `make ci`
-- `make clean`
-
-At the moment, `make test` is the most trustworthy development signal because host-side tests are currently green while Arduino library discovery / integration is still under investigation.
-
-## Repository layout
+Repository layout:
 
 - `src/` library source
 - `examples/` Arduino examples
@@ -221,12 +248,13 @@ At the moment, `make test` is the most trustworthy development signal because ho
 - `library.properties` Arduino library metadata
 - `keywords.txt` Arduino IDE keyword highlighting
 
-## Release / publish note
+Common local commands:
 
-The library source and host tests are far enough along to continue polishing and publishing the repository itself.
-
-However, before treating the library as fully released for ordinary Arduino IDE / Arduino CLI installation, the remaining Arduino-side integration issue should be resolved and re-tested through the normal library import path.
+make test
+make compile TCP1819_DIR=../TCP1819
+make ci TCP1819_DIR=../TCP1819
+make clean
 
 ## License
 
-MIT
+MIT License. See `LICENSE`.

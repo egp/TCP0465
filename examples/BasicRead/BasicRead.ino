@@ -14,7 +14,7 @@ TCP0465 oxygen;
 
 void setupOxygenBus() {
   memset(&oxygenBus, 0, sizeof(oxygenBus));
-  oxygenBus.bWire = 0;  // bit-banged I2C
+  oxygenBus.bWire = 0;
   oxygenBus.iSDA = kOxygenSdaPin;
   oxygenBus.iSCL = kOxygenSclPin;
   I2CInit(&oxygenBus, kOxygenI2cHz);

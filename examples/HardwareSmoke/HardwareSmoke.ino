@@ -26,7 +26,7 @@ void performRead() {
   float percentVol = 0.0f;
   if (oxygen.readOxygenPercent(percentVol)) {
     Serial.print("O2: ");
-    Serial.print(percentVol, 1);
+    Serial.print(percentVol, 1);  // 2nd param specifies decimal positions for the float.
     Serial.println(" %Vol");
   } else {
     Serial.print("read failed: ");
@@ -35,8 +35,8 @@ void performRead() {
 }
 
 void setupOxygenBus() {
-  memset(&oxygenBus, 0, sizeof(oxygenBus));
-  oxygenBus.bWire = 0;              // software/bit-bang I2C
+  memset(&oxygenBus, 0, sizeof(oxygenBus));  // clear the BBI2C array
+  oxygenBus.bWire = 0;
   oxygenBus.iSDA = OXYGEN_SDA_PIN;
   oxygenBus.iSCL = OXYGEN_SCL_PIN;
   I2CInit(&oxygenBus, OXYGEN_I2C_HZ);
