@@ -26,8 +26,9 @@ HOST_BUILD_DIR := $(BUILD_DIR)/host
 
 HOST_TEST_FILES := $(wildcard tests/host/*.cpp)
 HOST_TEST_SUPPORT := $(sort \
-	src/TCP0465Protocol.cpp \
+	src/TCP0465.cpp \
 	src/TCP0465Core.cpp \
+	src/TCP0465Protocol.cpp \
 	$(wildcard tests/host/fakes/*.cpp) \
 )
 
