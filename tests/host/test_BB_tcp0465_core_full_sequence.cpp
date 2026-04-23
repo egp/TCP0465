@@ -4,65 +4,67 @@
 #include "TCP0465Protocol.h"
 #include <cassert>
 #include <cstdint>
+#include <cstring>
 
 // -----------------------------------------------------------------------------
-// Fake BBI2C using TCP1819-style host seam expectations
+// Fake BBI2C (deterministic, stateless per transaction)
 // -----------------------------------------------------------------------------
 struct FakeBBI2C : public BBI2C {
 
-  uint8_t pendingCommand = 0;
+  uint8_t lastWrittenCommand = 0;
 
   int write(uint8_t, uint8_t, const uint8_t* data, size_t len) {
-
     if (len > 2) {
-      pendingCommand = data[2];
+      lastWrittenCommand = data[2];
     }
-
     return (int)len;
   }
 
   int read(uint8_t, uint8_t, uint8_t* out, size_t len) {
 
+    // zero-fill baseline
     for (size_t i = 0; i < len; i++) {
       out[i] = 0;
     }
 
-    // -------------------------
+    // -------------------------------------------------------------------------
     // MODE SWITCH RESPONSE
-    // -------------------------
-    if (pendingCommand == tcp0465::COMMAND_SET_MODE) {
+    // -------------------------------------------------------------------------
+    if (lastWrittenCommand == tcp0465::COMMAND_SET_MODE) {
 
-      out[0] = tcp0465::START_BYTE;
-      out[1] = tcp0465::COMMAND_SET_MODE;
-      out[2] = tcp0465::MODE_SWITCH_ACCEPTED;
+      uint8_t frame[tcp0465::FRAME_SIZE] = {0};
 
-      out[len - 1] =
-        tcp0465::computeChecksum(out, len - 1);
+      frame[0] = tcp0465::START_BYTE;
+      frame[1] = tcp0465::COMMAND_SET_MODE;
+      frame[2] = tcp0465::MODE_SWITCH_ACCEPTED;
 
-      pendingCommand = 0; // IMPORTANT: reset
+      frame[tcp0465::FRAME_SIZE - 1] =
+        tcp0465::computeChecksum(frame, tcp0465::FRAME_SIZE - 1);
 
+      memcpy(out, frame, len);
       return (int)len;
     }
 
-    // -------------------------
+    // -------------------------------------------------------------------------
     // GAS RESPONSE
-    // -------------------------
-    if (pendingCommand == tcp0465::COMMAND_READ_GAS) {
+    // -------------------------------------------------------------------------
+    if (lastWrittenCommand == tcp0465::COMMAND_READ_GAS) {
 
-      out[0] = tcp0465::START_BYTE;
-      out[1] = tcp0465::COMMAND_READ_GAS;
+      uint8_t frame[tcp0465::FRAME_SIZE] = {0};
 
-      out[2] = 0x01;
-      out[3] = 0xF4;
+      frame[0] = tcp0465::START_BYTE;
+      frame[1] = tcp0465::COMMAND_READ_GAS;
 
-      out[4] = tcp0465::EXPECTED_GAS_TYPE_OXYGEN;
-      out[5] = 2;
+      frame[2] = 0x01;  // raw MSB
+      frame[3] = 0xF4;  // raw LSB
 
-      out[len - 1] =
-        tcp0465::computeChecksum(out, len - 1);
+      frame[4] = tcp0465::EXPECTED_GAS_TYPE_OXYGEN;
+      frame[5] = 2; // decimals
 
-      pendingCommand = 0; // IMPORTANT
+      frame[tcp0465::FRAME_SIZE - 1] =
+        tcp0465::computeChecksum(frame, tcp0465::FRAME_SIZE - 1);
 
+      memcpy(out, frame, len);
       return (int)len;
     }
 
@@ -86,7 +88,6 @@ static void test_full_sequence_happy_path() {
 
   ok = dev.readOxygenPercent(v);
 
-  // BB-level guarantee: if protocol + wiring + parsing are correct
   assert(ok);
   assert(v >= 0.0f);
   assert(v <= 100.0f);
