@@ -10,25 +10,12 @@
 // -----------------------------------------------------------------------------
 struct FakeBBI2C : public BBI2C {
 
-  enum Mode {
-    MODE_SWITCH,
-    READ_GAS
-  };
+  uint8_t pendingCommand = 0;
 
-  Mode mode = MODE_SWITCH;
+  int write(uint8_t, uint8_t, const uint8_t* data, size_t len) {
 
- int write(uint8_t, uint8_t /*addr*/, const uint8_t* data, size_t len) {
-
-    // Detect command from outgoing frame
-    if (len >= 2) {
-      uint8_t cmd = data[2];
-
-      if (cmd == tcp0465::COMMAND_SET_MODE) {
-        mode = MODE_SWITCH;
-      }
-      else if (cmd == tcp0465::COMMAND_READ_GAS) {
-        mode = READ_GAS;
-      }
+    if (len > 2) {
+      pendingCommand = data[2];
     }
 
     return (int)len;
@@ -40,25 +27,27 @@ struct FakeBBI2C : public BBI2C {
       out[i] = 0;
     }
 
-    // -----------------------------
+    // -------------------------
     // MODE SWITCH RESPONSE
-    // -----------------------------
-    if (mode == MODE_SWITCH) {
+    // -------------------------
+    if (pendingCommand == tcp0465::COMMAND_SET_MODE) {
 
       out[0] = tcp0465::START_BYTE;
       out[1] = tcp0465::COMMAND_SET_MODE;
       out[2] = tcp0465::MODE_SWITCH_ACCEPTED;
 
       out[len - 1] =
-          tcp0465::computeChecksum(out, len - 1);
+        tcp0465::computeChecksum(out, len - 1);
+
+      pendingCommand = 0; // IMPORTANT: reset
 
       return (int)len;
     }
 
-    // -----------------------------
+    // -------------------------
     // GAS RESPONSE
-    // -----------------------------
-    if (mode == READ_GAS) {
+    // -------------------------
+    if (pendingCommand == tcp0465::COMMAND_READ_GAS) {
 
       out[0] = tcp0465::START_BYTE;
       out[1] = tcp0465::COMMAND_READ_GAS;
@@ -70,7 +59,9 @@ struct FakeBBI2C : public BBI2C {
       out[5] = 2;
 
       out[len - 1] =
-          tcp0465::computeChecksum(out, len - 1);
+        tcp0465::computeChecksum(out, len - 1);
+
+      pendingCommand = 0; // IMPORTANT
 
       return (int)len;
     }
