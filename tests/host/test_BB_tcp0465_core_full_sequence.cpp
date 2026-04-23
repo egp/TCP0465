@@ -10,38 +10,72 @@
 // -----------------------------------------------------------------------------
 struct FakeBBI2C : public BBI2C {
 
-  int write(uint8_t, uint8_t, const uint8_t*, size_t len) {
-    // Always succeed write at BB level
-    return static_cast<int>(len);
+  enum Mode {
+    MODE_SWITCH,
+    READ_GAS
+  };
+
+  Mode mode = MODE_SWITCH;
+
+ int write(uint8_t, uint8_t /*addr*/, const uint8_t* data, size_t len) {
+
+    // Detect command from outgoing frame
+    if (len >= 2) {
+      uint8_t cmd = data[2];
+
+      if (cmd == tcp0465::COMMAND_SET_MODE) {
+        mode = MODE_SWITCH;
+      }
+      else if (cmd == tcp0465::COMMAND_READ_GAS) {
+        mode = READ_GAS;
+      }
+    }
+
+    return (int)len;
   }
 
   int read(uint8_t, uint8_t, uint8_t* out, size_t len) {
 
-    // Default zero-fill
     for (size_t i = 0; i < len; i++) {
       out[i] = 0;
     }
 
-    // -------------------------------------------------------------------------
-    // This frame is consumed by setPassiveMode() -> parseModeSwitchResponse()
-    //
-    // Required conditions from TCP0465Protocol:
-    //   frame[0] = START_BYTE
-    //   frame[1] = expectedCommand (COMMAND_SET_MODE)
-    //   frame[2] = MODE_SWITCH_ACCEPTED
-    //   frame[last] = checksum
-    // -------------------------------------------------------------------------
+    // -----------------------------
+    // MODE SWITCH RESPONSE
+    // -----------------------------
+    if (mode == MODE_SWITCH) {
 
-    if (len >= tcp0465::FRAME_SIZE) {
       out[0] = tcp0465::START_BYTE;
       out[1] = tcp0465::COMMAND_SET_MODE;
       out[2] = tcp0465::MODE_SWITCH_ACCEPTED;
 
-      out[tcp0465::FRAME_SIZE - 1] =
-          tcp0465::computeChecksum(out, tcp0465::FRAME_SIZE - 1);
+      out[len - 1] =
+          tcp0465::computeChecksum(out, len - 1);
+
+      return (int)len;
     }
 
-    return static_cast<int>(len);
+    // -----------------------------
+    // GAS RESPONSE
+    // -----------------------------
+    if (mode == READ_GAS) {
+
+      out[0] = tcp0465::START_BYTE;
+      out[1] = tcp0465::COMMAND_READ_GAS;
+
+      out[2] = 0x01;
+      out[3] = 0xF4;
+
+      out[4] = tcp0465::EXPECTED_GAS_TYPE_OXYGEN;
+      out[5] = 2;
+
+      out[len - 1] =
+          tcp0465::computeChecksum(out, len - 1);
+
+      return (int)len;
+    }
+
+    return (int)len;
   }
 };
 
