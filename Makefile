@@ -43,6 +43,7 @@ host-test:
 	done
 
 test: host-test
+compile-all: host-test
 
 clean:
 	rm -rf "$(BUILD_DIR)"
