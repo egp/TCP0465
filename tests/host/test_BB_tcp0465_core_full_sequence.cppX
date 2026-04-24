@@ -1,0 +1,73 @@
+// test_BB_tcp0465_core_full_sequence.cpp
+
+#include "TCP0465.h"
+#include "TCP0465Protocol.h"
+#include "TCP1819/TCP1819ScriptedBus.h"
+
+#include <cassert>
+#include <cstdint>
+#include <vector>
+
+// -----------------------------------------------------------------------------
+// Minimal fake BBI2C implementation (this is the REAL hardware seam)
+// -----------------------------------------------------------------------------
+struct FakeBBI2C : public BBI2C {
+
+  TCP1819ScriptedBus* script = nullptr;
+  uint8_t lastAddr = 0;
+
+  int write(uint8_t, uint8_t addr, const uint8_t* data, size_t len) {
+    lastAddr = addr;
+
+    if (script) {
+      return script->handleWrite(this, addr, data, (int)len);
+    }
+
+    return (int)len;
+  }
+
+  int read(uint8_t, uint8_t addr, uint8_t* data, size_t len) {
+    if (script) {
+      return script->handleRead(this, addr, data, (int)len);
+    }
+
+    for (size_t i = 0; i < len; i++) {
+      data[i] = 0;
+    }
+
+    return (int)len;
+  }
+};
+
+
+// -----------------------------------------------------------------------------
+// Full sequence test
+// -----------------------------------------------------------------------------
+static void test_full_sequence_happy_path() {
+
+  FakeBBI2C bus;
+  TCP1819ScriptedBus script;
+
+  TCP1819ScriptedBus::bind(bus, script);
+
+  TCP0465 dev;
+
+  bool ok = dev.begin(bus, 0x50);
+  assert(ok);
+
+  float v = -1.0f;
+
+  ok = dev.readOxygenPercent(v);
+
+  assert(ok);
+  assert(v >= 0.0f);
+  assert(v <= 100.0f);
+}
+
+// -----------------------------------------------------------------------------
+// main
+// -----------------------------------------------------------------------------
+int main() {
+  test_full_sequence_happy_path();
+  return 0;
+}
